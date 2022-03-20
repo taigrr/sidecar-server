@@ -8,26 +8,11 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/taigrr/sidecar-server/exe"
+	"github.com/taigrr/sidecar-server/types"
 )
 
-func test() {
-	r := mux.NewRouter()
-	header := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
-	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"})
-	origins := handlers.AllowedOrigins([]string{"*"})
-	r.HandleFunc("/route", PostTabs).Methods("POST", "OPTIONS")
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = fmt.Fprint(w, "hello")
-	})
-
-	err := http.ListenAndServe(":15150", handlers.CORS(header, methods, origins)(r))
-
-	if err != nil {
-		fmt.Println(err)
-	}
-}
 func main() {
-	//test()
 	router := mux.NewRouter()
 
 	//specify endpoints, handler functions and HTTP method
@@ -50,57 +35,29 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
-
 	//update response writer
 	fmt.Fprintf(w, "{\"ok\": true}")
 }
-
-type TabSet struct {
-	Tabs []Tab `json:"tabs"`
-}
-type MutedInfo struct {
-	IsMuted bool `json:"muted"`
-}
-
-type Tab struct {
-	IsActive          bool      `json:"active"`
-	IsAudible         bool      `json:"audible"`
-	IsAutoDiscardable bool      `json:"autoDiscardable"`
-	IsDiscarded       bool      `json:"discarded"`
-	FaviconURL        string    `json:"favIconUrl"`
-	GroupID           int       `json:"groupId"`
-	Height            int       `json:"height"`
-	IsHighlighted     bool      `json:"highlighted"`
-	ID                int       `json:"id"`
-	IsIncognito       bool      `json:"incognito"`
-	Index             int       `json:"index"`
-	MutedInfo         MutedInfo `json:"mutedInfo"`
-	IsPinned          bool      `json:"pinned"`
-	IsSelected        bool      `json:"selected"`
-	LoadedStatus      string    `json:"status"`
-	Title             string    `json:"title"`
-	URL               string    `json:"url"`
-	Width             int       `json:"width"`
-	WindowID          int       `json:"windowId"`
-}
-
-type Actions struct {
-	Close []int `json:"close"`
-}
-
 func PostTabs(w http.ResponseWriter, r *http.Request) {
-	tabList := TabSet{}
-
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	tabList := types.TabSet{}
 	err := json.NewDecoder(r.Body).Decode(&tabList)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	a := Actions{}
-	for i, e := range tabList.Tabs {
-		fmt.Println(e.URL)
-		if i == 0 {
-			a.Close = []int{e.ID}
+	a := types.Actions{}
+	for _, e := range tabList.Tabs {
+		fmt.Printf("Checking URL: %s\n", e.URL)
+		shouldClose, err := exe.Spawn(e.URL)
+		if err != nil {
+			fmt.Printf("Error spawning action: %v\n", err)
+		}
+		if shouldClose {
+			a.Close = append(a.Close, e.ID)
 		}
 	}
 
