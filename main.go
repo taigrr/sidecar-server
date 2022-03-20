@@ -51,7 +51,6 @@ func PostTabs(w http.ResponseWriter, r *http.Request) {
 	}
 	a := types.Actions{}
 	for _, e := range tabList.Tabs {
-		fmt.Printf("Checking URL: %s\n", e.URL)
 		shouldClose, err := exe.Spawn(e.URL)
 		if err != nil {
 			fmt.Printf("Error spawning action: %v\n", err)
