@@ -57,11 +57,11 @@ func Execute(URL string, action string) error {
 		cmd = exec.Command(cmdRun[0], cmdRun[1:]...)
 	}
 	fmt.Printf("Running command: %s\n", cmd)
-	//err := cmd.Run()
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Error running command `%s`: %s %v\n", cmd, string(output), err)
-	}
+	err = cmd.Run()
+	// output, err := cmd.CombinedOutput()
+	//if err != nil {
+	//	fmt.Printf("Error running command `%s`: %s %v\n", cmd, string(output), err)
+	//}
 	return err
 }
 
